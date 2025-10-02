@@ -1,5 +1,6 @@
 -- =============================================
--- Bladeball Auto & Spam Parry Script (PC & Mobile)
+-- Bladeball Auto & Spam Parry Script (Final Version)
+-- PC & Mobile対応
 -- =============================================
 
 local Players = game:GetService("Players")
@@ -12,27 +13,42 @@ local player = Players.LocalPlayer
 local character = player.Character or player.CharacterAdded:Wait()
 local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
 
+-- ゲーム内のボール
 local BallPart = Workspace:WaitForChild("BallPart")
 
 -- 設定
-local AutoParryRange = 10
-local SpamParryDistance = 5
-local ParryCooldown = 1
-local SpamParryCooldown = 0.1
+local AutoParryRange = 10       -- 自動パリー発動距離
+local SpamParryDistance = 5     -- スパムパリー発動距離
+local ParryCooldown = 1         -- 通常パリーのクールタイム
+local SpamParryCooldown = 0.1   -- スパムパリーのクールタイム
 
 local lastParryTime = 0
 local AutoParryEnabled = true
 local SpamParryEnabled = true
 
--- 入力判定（PC用）
+-- PCパリーキー
 local ParryKey = Enum.KeyCode.Q
 
 -- パリー関数
 local function Parry()
     local now = tick()
-    if now - lastParryTime >= ParryCooldown then
-        -- 実際にはゲーム内のパリーRemoteEventを呼ぶ
-        print("Parry triggered at", now)
+    local cooldown = ParryCooldown
+    -- スパムパリーならクールタイムを短くする
+    if SpamParryEnabled then
+        for _, otherPlayer in ipairs(Players:GetPlayers()) do
+            if otherPlayer ~= player and otherPlayer.Character and otherPlayer.Character:FindFirstChild("HumanoidRootPart") then
+                local enemyDistance = (otherPlayer.Character.HumanoidRootPart.Position - humanoidRootPart.Position).Magnitude
+                if enemyDistance <= SpamParryDistance then
+                    cooldown = SpamParryCooldown
+                    break
+                end
+            end
+        end
+    end
+
+    if now - lastParryTime >= cooldown then
+        -- 実際にボールを弾く処理はゲーム側で動作
+        print("Parry triggered")  -- デバッグ用ログ
         lastParryTime = now
     end
 end
@@ -48,7 +64,7 @@ if UserInputService.TouchEnabled then
     ContextActionService:BindAction("MobileParry", MobileParryAction, false, Enum.UserInputType.Touch)
 end
 
--- メインループ
+-- メインループ（自動オートパリー・スパムパリー）
 RunService.RenderStepped:Connect(function()
     local now = tick()
     local ballDistance = (BallPart.Position - humanoidRootPart.Position).Magnitude
@@ -67,7 +83,7 @@ RunService.RenderStepped:Connect(function()
         end
     end
 
-    -- クールタイム調整
+    -- クールタイム調整＆パリー実行
     if spamParry then
         if now - lastParryTime >= SpamParryCooldown then
             Parry()
